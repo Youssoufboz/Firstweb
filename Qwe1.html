@@ -1,10 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Side Nav Bar with Icons</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+    <!-- ✅ STABLE Font Awesome (works on GitHub Pages) -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4F6T1U6G6C1ZJxGJv7YlYf0xg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+
     <style>
         body {
             margin: 0;
@@ -19,6 +28,8 @@
             display: flex;
             flex-direction: column;
             position: fixed;
+            left: 0;
+            top: 0;
         }
 
         .sidebar-header {
@@ -44,11 +55,8 @@
             padding: 10px 20px;
             display: flex;
             align-items: center;
+            gap: 10px;
             transition: background 0.3s, color 0.3s;
-        }
-
-        .menu a i {
-            margin-right: 10px;
         }
 
         .menu a:hover {
@@ -79,9 +87,10 @@
         .projects a {
             text-decoration: none;
             color: #555;
-            padding: 5px 15px;
-            display: block;
-            transition: color 0.3s;
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .projects a:hover {
@@ -98,8 +107,11 @@
         .footer a {
             text-decoration: none;
             color: #007bff;
-            margin: 5px;
-            display: block;
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
 
         .footer a:hover {
@@ -107,32 +119,36 @@
         }
     </style>
 </head>
+
 <body>
     <div class="sidebar">
         <div class="sidebar-header">
             <h2>TaskSync</h2>
         </div>
+
         <ul class="menu">
-            <li><a href="#"><i class="fas fa-home"></i> Home</a></li>
-            <li><a href="#"><i class="fas fa-envelope"></i> Message</a></li>
-            <li><a href="#"><i class="fas fa-tasks"></i> Task</a></li>
-            <li><a href="#"><i class="fas fa-users"></i> Members</a></li>
-            <li><a href="#"><i class="fas fa-chart-line"></i> Tracking</a></li>
+            <li><a href="#"><i class="fa-solid fa-house"></i> Home</a></li>
+            <li><a href="#"><i class="fa-solid fa-envelope"></i> Message</a></li>
+            <li><a href="#"><i class="fa-solid fa-list-check"></i> Task</a></li>
+            <li><a href="#"><i class="fa-solid fa-users"></i> Members</a></li>
+            <li><a href="#"><i class="fa-solid fa-chart-line"></i> Tracking</a></li>
         </ul>
+
         <div class="projects">
             <h3>Projects</h3>
             <ul>
-                <li><a href="#"><i class="fas fa-bullhorn"></i> Digital Campaign</a></li>
-                <li><a href="#"><i class="fas fa-paint-brush"></i> UI/UX Design</a></li>
-                <li><a href="#"><i class="fas fa-building"></i> Company Branding</a></li>
-                <li><a href="#"><i class="fas fa-pencil-alt"></i> Illustration Design</a></li>
-                <li><a href="#"><i class="fas fa-share-alt"></i> Social Media Management</a></li>
-                <li><a href="#"><i class="fas fa-box"></i> Packaging Design</a></li>
+                <li><a href="#"><i class="fa-solid fa-bullhorn"></i> Digital Campaign</a></li>
+                <li><a href="#"><i class="fa-solid fa-paintbrush"></i> UI/UX Design</a></li>
+                <li><a href="#"><i class="fa-solid fa-building"></i> Company Branding</a></li>
+                <li><a href="#"><i class="fa-solid fa-pencil"></i> Illustration Design</a></li>
+                <li><a href="#"><i class="fa-solid fa-share-nodes"></i> Social Media</a></li>
+                <li><a href="#"><i class="fa-solid fa-box"></i> Packaging Design</a></li>
             </ul>
         </div>
+
         <div class="footer">
-            <a href="#"><i class="fas fa-question-circle"></i> Help Center</a>
-            <a href="#"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            <a href="#"><i class="fa-solid fa-circle-question"></i> Help Center</a>
+            <a href="#"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
         </div>
     </div>
 </body>
