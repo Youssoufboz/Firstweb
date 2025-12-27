@@ -3,45 +3,39 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Echo Soul - Mobile</title>
+<title>Echo Soul - Mobile Responsive</title>
 <style>
-    body {
-        margin: 0;
-        padding: 0;
-        background: #050505;
-        color: #00ffcc;
-        font-family: 'Courier New', monospace;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
-        overflow: hidden;
-        touch-action: none;
-    }
-    canvas {
-        border: 2px solid #1a1a1a;
-        box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
-    }
-    .ui {
-        margin-top: 10px;
-        display: flex;
-        gap: 10px;
-    }
-    button {
-        background: #222;
-        color: #00ffcc;
-        border: 1px solid #444;
-        border-radius: 5px;
-        padding: 10px 15px;
-        font-size: 18px;
-    }
+body {
+    margin: 0;
+    padding: 0;
+    background: #050505;
+    color: #00ffcc;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    touch-action: none;
+}
+canvas { display: block; }
+.ui {
+    position: absolute;
+    bottom: 20px;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+}
+button {
+    background: #222;
+    color: #00ffcc;
+    border: 1px solid #444;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+}
 </style>
 </head>
 <body>
 
 <canvas id="gameCanvas"></canvas>
-
 <div class="ui">
     <button id="leftBtn">◀</button>
     <button id="jumpBtn">▲</button>
@@ -54,94 +48,79 @@ const ctx = canvas.getContext('2d');
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight * 0.7;
+    canvas.height = window.innerHeight;
 }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-// Game Constants
-const GRAVITY = 0.6;
-const FRICTION = 0.8;
-
-// Touch Input
+// Mobile controls
 const keys = { left: false, right: false, jump: false };
-document.getElementById('leftBtn').addEventListener('touchstart', e => keys.left = true);
-document.getElementById('leftBtn').addEventListener('touchend', e => keys.left = false);
+['leftBtn','rightBtn','jumpBtn'].forEach(id=>{
+    const btn = document.getElementById(id);
+    btn.addEventListener('touchstart', e=>{ keys[id.includes('left')?'left':id.includes('right')?'right':'jump'] = true; e.preventDefault(); });
+    btn.addEventListener('touchend', e=>{ keys[id.includes('left')?'left':id.includes('right')?'right':'jump'] = false; e.preventDefault(); });
+});
 
-document.getElementById('rightBtn').addEventListener('touchstart', e => keys.right = true);
-document.getElementById('rightBtn').addEventListener('touchend', e => keys.right = false);
-
-document.getElementById('jumpBtn').addEventListener('touchstart', e => keys.jump = true);
-document.getElementById('jumpBtn').addEventListener('touchend', e => keys.jump = false);
-
-// Classes (Player, Platform, Particle) same as your original, just adapt movement
+// Game constants relative to canvas
+const GRAVITY = 0.02 * canvas.height;
+const FRICTION = 0.9;
+let player, platforms, particles;
 
 class Platform {
-    constructor(x, y, w, h) {
-        this.x = x; this.y = y; this.w = w; this.h = h; this.visibility = 0;
-    }
-    draw() {
-        if (this.visibility > 0) {
-            ctx.fillStyle = `rgba(0, 255, 204, ${this.visibility})`;
-            ctx.fillRect(this.x, this.y, this.w, this.h);
-            this.visibility -= 0.01;
-        }
-    }
+    constructor(x, y, w, h) { this.x=x; this.y=y; this.w=w; this.h=h; this.visibility=0; }
+    draw() { if(this.visibility>0){ ctx.fillStyle=`rgba(0,255,204,${this.visibility})`; ctx.fillRect(this.x,this.y,this.w,this.h); this.visibility-=0.01; } }
 }
 
 class Particle {
-    constructor(x, y) {
-        this.x = x; this.y = y; this.radius = Math.random() * 3;
-        this.vx = (Math.random() - 0.5) * 4; this.vy = (Math.random() - 0.5) * 4;
-        this.life = 1.0;
-    }
-    update() { this.x += this.vx; this.y += this.vy; this.life -= 0.02; }
-    draw() { ctx.fillStyle = `rgba(0,255,204,${this.life})`; ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fill(); }
+    constructor(x,y){ this.x=x;this.y=y;this.radius=Math.random()*5;this.vx=(Math.random()-0.5)*10;this.vy=(Math.random()-0.5)*10;this.life=1;}
+    update(){ this.x+=this.vx; this.y+=this.vy; this.life-=0.02; }
+    draw(){ ctx.fillStyle=`rgba(0,255,204,${this.life})`; ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fill(); }
 }
 
 class Player {
-    constructor() { this.x = 100; this.y = 100; this.w = 20; this.h = 20; this.vx = 0; this.vy = 0; this.speed = 5; this.jumpPower = -12; this.grounded = false; }
-    update(platforms) {
-        if (keys.right) this.vx += 0.8;
-        if (keys.left) this.vx -= 0.8;
+    constructor(){ this.w=canvas.width*0.05; this.h=canvas.height*0.05; this.x=canvas.width*0.1; this.y=canvas.height*0.7; this.vx=0; this.vy=0; this.speed=0.6*canvas.width/800; this.jumpPower=-0.015*canvas.height; this.grounded=false; }
+    update(platforms){
+        if(keys.right) this.vx += this.speed;
+        if(keys.left) this.vx -= this.speed;
         this.vx *= FRICTION; this.x += this.vx;
+        if(Math.abs(this.vx)>0.1 || !this.grounded) this.emitPulse(platforms,canvas.width*0.2);
+        this.vy += GRAVITY; this.y += this.vy; this.grounded=false;
 
-        if (Math.abs(this.vx) > 1 || !this.grounded) this.emitPulse(platforms, 150);
-
-        this.vy += GRAVITY; this.y += this.vy; this.grounded = false;
-
-        for (let p of platforms) {
-            if (this.x < p.x + p.w && this.x + this.w > p.x && this.y < p.y + p.h && this.y + this.h > p.y) {
-                const overlapX = Math.min(this.x + this.w - p.x, p.x + p.w - this.x);
-                const overlapY = Math.min(this.y + this.h - p.y, p.y + p.h - this.y);
-                if (overlapX < overlapY) { this.x += (this.x < p.x ? -overlapX : overlapX); this.vx = 0; }
-                else { if (this.vy > 0) { this.y -= overlapY; this.vy = 0; this.grounded = true; } else { this.y += overlapY; this.vy = 0; } }
+        for(let p of platforms){
+            if(this.x<this.x+p.w && this.x+this.w>p.x && this.y<this.y+p.h && this.y+this.h>p.y){
+                const overlapX=Math.min(this.x+p.w-p.x,p.x+p.w-this.x);
+                const overlapY=Math.min(this.y+p.h-p.y,p.y+p.h-this.y);
+                if(overlapX<overlapY){ this.x+=(this.x<p.x?-overlapX:overlapX); this.vx=0; }
+                else{ if(this.vy>0){ this.y-=overlapY; this.vy=0; this.grounded=true; } else { this.y+=overlapY; this.vy=0; } }
             }
         }
-
-        if (keys.jump && this.grounded) { this.vy = this.jumpPower; this.grounded = false; this.emitPulse(platforms,400); }
+        if(keys.jump && this.grounded){ this.vy=this.jumpPower; this.grounded=false; this.emitPulse(platforms,canvas.width*0.25); }
     }
-    emitPulse(platforms, range) { platforms.forEach(p => { const dist = Math.hypot(this.x-p.x,this.y-p.y); if (dist<range) p.visibility=Math.max(p.visibility,1-dist/range); }); }
-    draw() { ctx.fillStyle='#fff'; ctx.shadowBlur=15; ctx.shadowColor='#00ffcc'; ctx.fillRect(this.x,this.y,this.w,this.h); ctx.shadowBlur=0; }
+    emitPulse(platforms,range){ platforms.forEach(p=>{ const dist=Math.hypot(this.x-p.x,this.y-p.y); if(dist<range)p.visibility=Math.max(p.visibility,1-dist/range); }); }
+    draw(){ ctx.fillStyle='#fff'; ctx.shadowBlur=15; ctx.shadowColor='#00ffcc'; ctx.fillRect(this.x,this.y,this.w,this.h); ctx.shadowBlur=0; }
 }
 
-// Game State
-const player = new Player();
-const platforms = [
-    new Platform(0, canvas.height-20, canvas.width, 20),
-    new Platform(150, canvas.height-120, 150, 20),
-    new Platform(400, canvas.height-200, 200, 20),
-    new Platform(100, canvas.height-280, 100, 20),
-    new Platform(600, canvas.height-320, 150, 20),
-    new Platform(300, canvas.height-400, 80, 20)
-];
-let particles = [];
+// Initialize game
+function initGame(){
+    player = new Player();
+    platforms = [
+        new Platform(0, canvas.height*0.95, canvas.width, canvas.height*0.05),
+        new Platform(canvas.width*0.2, canvas.height*0.75, canvas.width*0.2, canvas.height*0.03),
+        new Platform(canvas.width*0.5, canvas.height*0.6, canvas.width*0.3, canvas.height*0.03),
+        new Platform(canvas.width*0.1, canvas.height*0.45, canvas.width*0.15, canvas.height*0.03),
+        new Platform(canvas.width*0.7, canvas.height*0.35, canvas.width*0.2, canvas.height*0.03),
+        new Platform(canvas.width*0.35, canvas.height*0.2, canvas.width*0.1, canvas.height*0.03)
+    ];
+    particles = [];
+}
 
-function animate() {
+initGame();
+
+function animate(){
     ctx.fillStyle='rgba(5,5,5,0.3)'; ctx.fillRect(0,0,canvas.width,canvas.height);
     platforms.forEach(p=>p.draw());
     player.update(platforms); player.draw();
-    if (Math.abs(player.vx)>2) particles.push(new Particle(player.x+player.w/2,player.y+player.h));
+    if(Math.abs(player.vx)>2) particles.push(new Particle(player.x+player.w/2,player.y+player.h));
     particles = particles.filter(p=>p.life>0); particles.forEach(p=>{p.update();p.draw();});
     requestAnimationFrame(animate);
 }
