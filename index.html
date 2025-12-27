@@ -1,155 +1,181 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Side Nav Bar with Icons</title>
+<meta charset="UTF-8">
+<title>2D Platformer Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- ✅ STABLE Font Awesome (works on GitHub Pages) -->
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-      integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4F6T1U6G6C1ZJxGJv7YlYf0xg=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    />
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-        }
+    body {
+        background: #111;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-family: Arial, sans-serif;
+    }
 
-        .sidebar {
-            width: 250px;
-            height: 100vh;
-            background-color: #f8f9fa;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            position: fixed;
-            left: 0;
-            top: 0;
-        }
+    canvas {
+        background: #87ceeb;
+        border: 3px solid #fff;
+    }
 
-        .sidebar-header {
-            padding: 20px;
-            text-align: center;
-            background-color: #007bff;
-            color: white;
-        }
-
-        .menu {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .menu li {
-            margin: 10px 0;
-        }
-
-        .menu a {
-            text-decoration: none;
-            color: #333;
-            padding: 10px 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: background 0.3s, color 0.3s;
-        }
-
-        .menu a:hover {
-            background-color: #007bff;
-            color: white;
-        }
-
-        .projects {
-            margin-top: 20px;
-            padding: 0 20px;
-        }
-
-        .projects h3 {
-            font-size: 16px;
-            margin-bottom: 10px;
-        }
-
-        .projects ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .projects li {
-            margin: 5px 0;
-        }
-
-        .projects a {
-            text-decoration: none;
-            color: #555;
-            padding: 5px 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .projects a:hover {
-            color: #007bff;
-        }
-
-        .footer {
-            margin-top: auto;
-            padding: 20px;
-            text-align: center;
-            background-color: #f1f1f1;
-        }
-
-        .footer a {
-            text-decoration: none;
-            color: #007bff;
-            margin: 5px 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .footer a:hover {
-            text-decoration: underline;
-        }
-    </style>
+    .hint {
+        position: fixed;
+        bottom: 10px;
+        color: #fff;
+        font-size: 14px;
+        opacity: 0.8;
+    }
+</style>
 </head>
 
 <body>
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h2>TaskSync</h2>
-        </div>
 
-        <ul class="menu">
-            <li><a href="#"><i class="fa-solid fa-house"></i> Home</a></li>
-            <li><a href="#"><i class="fa-solid fa-envelope"></i> Message</a></li>
-            <li><a href="#"><i class="fa-solid fa-list-check"></i> Task</a></li>
-            <li><a href="#"><i class="fa-solid fa-users"></i> Members</a></li>
-            <li><a href="#"><i class="fa-solid fa-chart-line"></i> Tracking</a></li>
-        </ul>
+<canvas id="game" width="800" height="450"></canvas>
+<div class="hint">Move: ← → | Jump: Space</div>
 
-        <div class="projects">
-            <h3>Projects</h3>
-            <ul>
-                <li><a href="#"><i class="fa-solid fa-bullhorn"></i> Digital Campaign</a></li>
-                <li><a href="#"><i class="fa-solid fa-paintbrush"></i> UI/UX Design</a></li>
-                <li><a href="#"><i class="fa-solid fa-building"></i> Company Branding</a></li>
-                <li><a href="#"><i class="fa-solid fa-pencil"></i> Illustration Design</a></li>
-                <li><a href="#"><i class="fa-solid fa-share-nodes"></i> Social Media</a></li>
-                <li><a href="#"><i class="fa-solid fa-box"></i> Packaging Design</a></li>
-            </ul>
-        </div>
+<script>
+/* ===============================
+   BASIC GAME ENGINE (PRO STYLE)
+================================ */
 
-        <div class="footer">
-            <a href="#"><i class="fa-solid fa-circle-question"></i> Help Center</a>
-            <a href="#"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
-        </div>
-    </div>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const gravity = 0.6;
+const keys = {};
+
+/* ===============================
+   PLAYER
+================================ */
+
+const player = {
+    x: 50,
+    y: 0,
+    width: 40,
+    height: 50,
+    color: "#ff4757",
+    velX: 0,
+    velY: 0,
+    speed: 5,
+    jumping: false
+};
+
+/* ===============================
+   PLATFORMS
+================================ */
+
+const platforms = [
+    { x: 0, y: 400, width: 800, height: 50 },
+    { x: 200, y: 320, width: 120, height: 20 },
+    { x: 400, y: 260, width: 120, height: 20 },
+    { x: 600, y: 200, width: 120, height: 20 }
+];
+
+/* ===============================
+   INPUT
+================================ */
+
+document.addEventListener("keydown", e => keys[e.code] = true);
+document.addEventListener("keyup", e => keys[e.code] = false);
+
+/* ===============================
+   COLLISION
+================================ */
+
+function rectsCollide(a, b) {
+    return (
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y
+    );
+}
+
+/* ===============================
+   UPDATE
+================================ */
+
+function update() {
+    // Horizontal movement
+    if (keys["ArrowRight"]) player.velX = player.speed;
+    else if (keys["ArrowLeft"]) player.velX = -player.speed;
+    else player.velX = 0;
+
+    // Jump
+    if (keys["Space"] && !player.jumping) {
+        player.velY = -12;
+        player.jumping = true;
+    }
+
+    // Gravity
+    player.velY += gravity;
+
+    // Move
+    player.x += player.velX;
+    player.y += player.velY;
+
+    // Collision with platforms
+    for (let p of platforms) {
+        if (rectsCollide(player, p)) {
+            if (player.velY > 0) {
+                player.y = p.y - player.height;
+                player.velY = 0;
+                player.jumping = false;
+            }
+        }
+    }
+
+    // Screen limits
+    if (player.x < 0) player.x = 0;
+    if (player.x + player.width > canvas.width)
+        player.x = canvas.width - player.width;
+
+    if (player.y > canvas.height) {
+        // Reset if fallen
+        player.x = 50;
+        player.y = 0;
+        player.velY = 0;
+    }
+}
+
+/* ===============================
+   DRAW
+================================ */
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Player
+    ctx.fillStyle = player.color;
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+
+    // Platforms
+    ctx.fillStyle = "#2f3542";
+    for (let p of platforms) {
+        ctx.fillRect(p.x, p.y, p.width, p.height);
+    }
+}
+
+/* ===============================
+   GAME LOOP
+================================ */
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
 </body>
 </html>
