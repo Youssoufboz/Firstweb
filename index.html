@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Neon Runner - 2D Adventure</title>
+<title>Pirate Adventure - Epic Platformer</title>
 <style>
 * {
     margin: 0;
@@ -29,26 +29,63 @@ body {
     position: absolute;
     top: 15px;
     left: 15px;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: bold;
     text-shadow: 2px 2px 4px #000;
     z-index: 10;
+    background: rgba(0,0,0,0.5);
+    padding: 10px;
+    border-radius: 10px;
 }
 .level-display {
     position: absolute;
     top: 15px;
     right: 15px;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: bold;
     text-shadow: 2px 2px 4px #000;
     color: #00ff88;
     z-index: 10;
+    background: rgba(0,0,0,0.5);
+    padding: 10px;
+    border-radius: 10px;
 }
-.lives {
-    color: #ff3366;
-}
-.coins {
+.combo {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 32px;
+    font-weight: bold;
     color: #ffd700;
+    text-shadow: 3px 3px 6px #000;
+    display: none;
+    animation: bounce 0.5s;
+    z-index: 10;
+}
+@keyframes bounce {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.3); }
+}
+.power-bar {
+    position: absolute;
+    bottom: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 20px;
+    background: rgba(0,0,0,0.7);
+    border: 2px solid #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    display: none;
+    z-index: 10;
+}
+.power-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff3366, #ffd700);
+    width: 0%;
+    transition: width 0.1s;
 }
 .controls {
     position: absolute;
@@ -89,18 +126,27 @@ body {
 .btn-jump:active {
     background: rgba(255, 51, 102, 0.4);
 }
+.btn-attack {
+    background: rgba(255, 215, 0, 0.2);
+    border-color: #ffd700;
+    margin-left: 10px;
+}
+.btn-attack:active {
+    background: rgba(255, 215, 0, 0.4);
+}
 .message {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.9);
+    background: rgba(0, 0, 0, 0.95);
     padding: 40px;
     border-radius: 15px;
     border: 3px solid #ff3366;
     text-align: center;
     display: none;
     z-index: 100;
+    max-width: 90%;
 }
 .message h2 {
     font-size: 36px;
@@ -108,7 +154,7 @@ body {
     color: #ff3366;
 }
 .message button {
-    margin-top: 20px;
+    margin: 10px;
     padding: 12px 30px;
     font-size: 18px;
     background: #ff3366;
@@ -123,7 +169,7 @@ body {
 }
 @media (max-width: 600px) {
     .btn { width: 55px; height: 55px; font-size: 24px; }
-    .hud { font-size: 16px; }
+    .hud { font-size: 14px; }
 }
 </style>
 </head>
@@ -131,13 +177,20 @@ body {
 <canvas id="gameCanvas"></canvas>
 
 <div class="hud">
-    <div class="lives">❤️ Lives: <span id="lives">3</span></div>
-    <div class="coins">🪙 Coins: <span id="coins">0</span></div>
-    <div>⭐ Score: <span id="score">0</span></div>
+    <div class="lives">❤️ <span id="lives">3</span></div>
+    <div class="coins">🪙 <span id="coins">0</span></div>
+    <div>⭐ <span id="score">0</span></div>
+    <div style="color: #ffd700;">🔥 <span id="combo">0</span>x</div>
 </div>
 
 <div class="level-display">
     Level <span id="levelNum">1</span>
+</div>
+
+<div class="combo" id="comboDisplay">COMBO x<span id="comboNum">0</span>!</div>
+
+<div class="power-bar" id="powerBar">
+    <div class="power-fill" id="powerFill"></div>
 </div>
 
 <div class="controls">
@@ -145,7 +198,10 @@ body {
         <div class="btn" id="leftBtn">◀</div>
         <div class="btn" id="rightBtn">▶</div>
     </div>
-    <div class="btn btn-jump" id="jumpBtn">↑</div>
+    <div style="display: flex;">
+        <div class="btn btn-jump" id="jumpBtn">↑</div>
+        <div class="btn btn-attack" id="attackBtn">👊</div>
+    </div>
 </div>
 
 <div class="message" id="gameOver">
@@ -153,11 +209,13 @@ body {
     <div style="font-size: 24px; margin: 10px 0;">Final Score: <span id="finalScore">0</span></div>
     <div style="font-size: 18px; margin: 10px 0;">Continue from Level <span id="continueLevel">1</span></div>
     <button onclick="restart()">Continue</button>
+    <button onclick="resetGame()">Start Over</button>
 </div>
 
 <div class="message" id="levelComplete">
     <h2>Level Complete! 🎉</h2>
     <div style="font-size: 24px; margin: 10px 0;">Score: <span id="levelScore">0</span></div>
+    <div style="font-size: 18px; margin: 10px 0; color: #ffd700;">Max Combo: x<span id="maxCombo">0</span></div>
     <button onclick="nextLevel()">Next Level</button>
 </div>
 
@@ -184,36 +242,45 @@ const game = {
     lives: 3,
     coins: 0,
     score: 0,
+    combo: 0,
+    maxCombo: 0,
+    comboTimer: 0,
     entities: [],
     particles: [],
+    floatingTexts: [],
     levelWidth: 0,
     gameOver: false,
-    levelComplete: false
+    levelComplete: false,
+    powerMeter: 0
 };
 
 // Controls
-['leftBtn', 'rightBtn', 'jumpBtn'].forEach(id => {
+['leftBtn', 'rightBtn', 'jumpBtn', 'attackBtn'].forEach(id => {
     const btn = document.getElementById(id);
     const key = id.replace('Btn', '');
     
     btn.addEventListener('mousedown', e => { 
         game.keys[key] = true;
         if (key === 'jump') game.keys.jumpPressed = true;
+        if (key === 'attack') game.keys.attackPressed = true;
         e.preventDefault();
     });
     btn.addEventListener('mouseup', e => { 
         game.keys[key] = false;
         if (key === 'jump') game.keys.jumpPressed = false;
+        if (key === 'attack') game.keys.attackPressed = false;
         e.preventDefault();
     });
     btn.addEventListener('touchstart', e => { 
         game.keys[key] = true;
         if (key === 'jump') game.keys.jumpPressed = true;
+        if (key === 'attack') game.keys.attackPressed = true;
         e.preventDefault();
     });
     btn.addEventListener('touchend', e => { 
         game.keys[key] = false;
         if (key === 'jump') game.keys.jumpPressed = false;
+        if (key === 'attack') game.keys.attackPressed = false;
         e.preventDefault();
     });
 });
@@ -227,6 +294,12 @@ window.addEventListener('keydown', e => {
             game.keys.jumpPressed = true;
         }
     }
+    if (e.key === 'x' || e.key === 'k') {
+        if (!game.keys.attack) {
+            game.keys.attack = true;
+            game.keys.attackPressed = true;
+        }
+    }
 });
 window.addEventListener('keyup', e => {
     if (e.key === 'ArrowLeft' || e.key === 'a') game.keys.left = false;
@@ -235,7 +308,36 @@ window.addEventListener('keyup', e => {
         game.keys.jump = false;
         game.keys.jumpPressed = false;
     }
+    if (e.key === 'x' || e.key === 'k') {
+        game.keys.attack = false;
+        game.keys.attackPressed = false;
+    }
 });
+
+class FloatingText {
+    constructor(x, y, text, color) {
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.color = color;
+        this.life = 60;
+        this.vy = -2;
+    }
+    update() {
+        this.y += this.vy;
+        this.life--;
+    }
+    draw() {
+        const cx = this.x - game.camera.x;
+        const cy = this.y - game.camera.y;
+        ctx.globalAlpha = this.life / 60;
+        ctx.fillStyle = this.color;
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.text, cx, cy);
+        ctx.globalAlpha = 1;
+    }
+}
 
 class Player {
     constructor(x, y) {
@@ -245,7 +347,7 @@ class Player {
         this.h = 48;
         this.vx = 0;
         this.vy = 0;
-        this.speed = 5;
+        this.speed = 6;
         this.jumpPower = -13;
         this.grounded = false;
         this.canJump = true;
@@ -253,26 +355,38 @@ class Player {
         this.jumpBufferTime = 0;
         this.coyoteTime = 0;
         this.doubleJumpAvailable = true;
+        this.attacking = false;
+        this.attackCooldown = 0;
+        this.invincible = 0;
+        this.dashCooldown = 0;
     }
     
     update() {
         const wasGrounded = this.grounded;
         
-        if (game.keys.left) {
-            this.vx = -this.speed;
-            this.facingRight = false;
+        // Dash move
+        if ((game.keys.left && game.keys.attack || game.keys.right && game.keys.attack) && this.dashCooldown <= 0) {
+            this.vx = (game.keys.right ? 1 : -1) * 12;
+            this.dashCooldown = 30;
+            for (let i = 0; i < 10; i++) {
+                game.particles.push(new Particle(this.x + this.w/2, this.y + this.h/2, '#00ccff'));
+            }
         } else if (game.keys.right) {
             this.vx = this.speed;
             this.facingRight = true;
+        } else if (game.keys.left) {
+            this.vx = -this.speed;
+            this.facingRight = false;
         } else {
             this.vx *= 0.8;
         }
         
-        // Gravity
+        if (this.dashCooldown > 0) this.dashCooldown--;
+        if (this.invincible > 0) this.invincible--;
+        
         this.vy += 0.5;
         if (this.vy > 15) this.vy = 15;
         
-        // Variable jump height
         if (!game.keys.jump && this.vy < 0) {
             this.vy *= 0.85;
         }
@@ -282,7 +396,6 @@ class Player {
         
         this.grounded = false;
         
-        // Collision with platforms
         game.entities.forEach(ent => {
             if (ent.type === 'platform') {
                 if (this.x < ent.x + ent.w && this.x + this.w > ent.x &&
@@ -301,7 +414,7 @@ class Player {
                             this.grounded = true;
                             this.canJump = true;
                             this.coyoteTime = 8;
-                            this.doubleJumpAvailable = true; // Reset double jump when landing
+                            this.doubleJumpAvailable = true;
                         } else {
                             this.y = ent.y + ent.h;
                             this.vy = 0;
@@ -311,40 +424,61 @@ class Player {
             }
         });
         
-        // Coyote time (grace period after leaving platform)
         if (!this.grounded && wasGrounded) {
             this.coyoteTime = 8;
         }
         if (this.coyoteTime > 0) this.coyoteTime--;
         
-        // Jump buffer
         if (game.keys.jumpPressed) {
             this.jumpBufferTime = 8;
             game.keys.jumpPressed = false;
         }
         if (this.jumpBufferTime > 0) this.jumpBufferTime--;
         
-        // Jump with buffer and coyote time
         if (this.jumpBufferTime > 0 && (this.grounded || this.coyoteTime > 0) && this.canJump) {
             this.vy = this.jumpPower;
             this.grounded = false;
             this.canJump = false;
             this.coyoteTime = 0;
             this.jumpBufferTime = 0;
-            this.doubleJumpAvailable = true; // Reset double jump when jumping from ground
+            this.doubleJumpAvailable = true;
         }
-        // Double jump in air
         else if (this.jumpBufferTime > 0 && !this.grounded && this.coyoteTime <= 0 && this.doubleJumpAvailable) {
             this.vy = this.jumpPower;
             this.doubleJumpAvailable = false;
             this.jumpBufferTime = 0;
-            // Particle effect for double jump
             for (let i = 0; i < 8; i++) {
                 game.particles.push(new Particle(this.x + this.w/2, this.y + this.h, '#00ccff'));
             }
         }
         
-        // Check coins
+        // Attack
+        if (game.keys.attackPressed && this.attackCooldown <= 0) {
+            this.attacking = true;
+            this.attackCooldown = 20;
+            game.keys.attackPressed = false;
+            
+            game.entities.forEach(ent => {
+                if (ent.type === 'enemy' && !ent.dead) {
+                    const dist = Math.hypot(this.x - ent.x, this.y - ent.y);
+                    if (dist < 60) {
+                        ent.dead = true;
+                        addCombo();
+                        game.score += 100 * game.combo;
+                        updateHUD();
+                        game.floatingTexts.push(new FloatingText(ent.x + ent.w/2, ent.y, '+' + (100 * game.combo), '#ffd700'));
+                        for (let j = 0; j < 15; j++) {
+                            game.particles.push(new Particle(ent.x + ent.w/2, ent.y + ent.h/2, '#ff3366'));
+                        }
+                    }
+                }
+            });
+        }
+        
+        if (this.attackCooldown > 0) this.attackCooldown--;
+        if (this.attackCooldown === 0) this.attacking = false;
+        
+        // Coin collection
         game.entities.forEach((ent, i) => {
             if (ent.type === 'coin' && !ent.collected) {
                 const dist = Math.hypot(this.x + this.w/2 - (ent.x + ent.w/2), 
@@ -352,26 +486,46 @@ class Player {
                 if (dist < 30) {
                     ent.collected = true;
                     game.coins++;
-                    game.score += 50;
+                    addCombo();
+                    const coinScore = 50 * game.combo;
+                    game.score += coinScore;
+                    game.powerMeter = Math.min(100, game.powerMeter + 10);
                     updateHUD();
+                    game.floatingTexts.push(new FloatingText(ent.x + ent.w/2, ent.y, '+' + coinScore, '#ffd700'));
                     for (let j = 0; j < 10; j++) {
                         game.particles.push(new Particle(ent.x + ent.w/2, ent.y + ent.h/2, '#ffd700'));
                     }
                 }
             }
+            if (ent.type === 'powerup' && !ent.collected) {
+                const dist = Math.hypot(this.x + this.w/2 - (ent.x + ent.w/2), 
+                                       this.y + this.h/2 - (ent.y + ent.h/2));
+                if (dist < 30) {
+                    ent.collected = true;
+                    game.lives = Math.min(5, game.lives + 1);
+                    game.score += 200;
+                    updateHUD();
+                    game.floatingTexts.push(new FloatingText(ent.x + ent.w/2, ent.y, '+1 LIFE!', '#ff3366'));
+                    for (let j = 0; j < 20; j++) {
+                        game.particles.push(new Particle(ent.x + ent.w/2, ent.y + ent.h/2, '#ff3366'));
+                    }
+                }
+            }
         });
         
-        // Check enemies
+        // Enemy collision
         game.entities.forEach(ent => {
-            if (ent.type === 'enemy' && !ent.dead) {
+            if (ent.type === 'enemy' && !ent.dead && this.invincible <= 0) {
                 if (this.x < ent.x + ent.w && this.x + this.w > ent.x &&
                     this.y < ent.y + ent.h && this.y + this.h > ent.y) {
                     
                     if (this.vy > 0 && this.y + this.h/2 < ent.y + ent.h/2) {
                         ent.dead = true;
                         this.vy = -10;
-                        game.score += 100;
+                        addCombo();
+                        game.score += 100 * game.combo;
                         updateHUD();
+                        game.floatingTexts.push(new FloatingText(ent.x + ent.w/2, ent.y, 'STOMP! +' + (100 * game.combo), '#ffd700'));
                         for (let j = 0; j < 15; j++) {
                             game.particles.push(new Particle(ent.x + ent.w/2, ent.y + ent.h/2, '#ff3366'));
                         }
@@ -382,7 +536,7 @@ class Player {
             }
         });
         
-        // Check goal
+        // Goal check
         game.entities.forEach(ent => {
             if (ent.type === 'goal') {
                 if (this.x < ent.x + ent.w && this.x + this.w > ent.x &&
@@ -392,22 +546,25 @@ class Player {
             }
         });
         
-        // Fall death
         if (this.y > H + 100) {
             this.hit();
         }
     }
     
     hit() {
-        game.lives--;
-        updateHUD();
-        if (game.lives <= 0) {
-            endGame();
-        } else {
-            this.x = 50;
-            this.y = 300;
-            this.vx = 0;
-            this.vy = 0;
+        if (this.invincible <= 0) {
+            game.lives--;
+            this.invincible = 120;
+            resetCombo();
+            updateHUD();
+            if (game.lives <= 0) {
+                endGame();
+            } else {
+                this.x = 50;
+                this.y = 300;
+                this.vx = 0;
+                this.vy = 0;
+            }
         }
     }
     
@@ -415,7 +572,10 @@ class Player {
         const cx = this.x - game.camera.x;
         const cy = this.y - game.camera.y;
         
-        // Draw Luffy-style character
+        if (this.invincible > 0 && Math.floor(this.invincible / 5) % 2 === 0) {
+            ctx.globalAlpha = 0.5;
+        }
+        
         // Skin tone
         ctx.fillStyle = '#fdc689';
         
@@ -428,8 +588,16 @@ class Player {
         
         // Arms
         ctx.fillStyle = '#fdc689';
-        ctx.fillRect(cx + 6, cy + 22, 4, 10);
-        ctx.fillRect(cx + 22, cy + 22, 4, 10);
+        if (this.attacking) {
+            if (this.facingRight) {
+                ctx.fillRect(cx + 22, cy + 22, 8, 4);
+            } else {
+                ctx.fillRect(cx + 2, cy + 22, 8, 4);
+            }
+        } else {
+            ctx.fillRect(cx + 6, cy + 22, 4, 10);
+            ctx.fillRect(cx + 22, cy + 22, 4, 10);
+        }
         
         // Shorts (blue)
         ctx.fillStyle = '#4169e1';
@@ -460,6 +628,8 @@ class Player {
         // Hat ribbon
         ctx.fillStyle = '#dc143c';
         ctx.fillRect(cx + 8, cy + 4, 16, 2);
+        
+        ctx.globalAlpha = 1;
     }
 }
 
@@ -478,6 +648,13 @@ class Platform {
         const cy = this.y - game.camera.y;
         ctx.fillStyle = this.color;
         ctx.fillRect(cx, cy, this.w, this.h);
+        
+        // Grass texture
+        ctx.fillStyle = '#3a5a4a';
+        for (let i = 0; i < this.w; i += 16) {
+            ctx.fillRect(cx + i, cy, 2, 4);
+        }
+        
         ctx.strokeStyle = '#666';
         ctx.lineWidth = 2;
         ctx.strokeRect(cx, cy, this.w, this.h);
@@ -493,20 +670,24 @@ class Coin {
         this.h = 24;
         this.collected = false;
         this.angle = 0;
+        this.bob = 0;
     }
     
     update() {
         this.angle += 0.1;
+        this.bob += 0.1;
     }
     
     draw() {
         if (!this.collected) {
             const cx = this.x - game.camera.x;
-            const cy = this.y - game.camera.y;
+            const cy = this.y - game.camera.y + Math.sin(this.bob) * 5;
             ctx.save();
             ctx.translate(cx + this.w/2, cy + this.h/2);
             ctx.rotate(this.angle);
             ctx.fillStyle = '#ffd700';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ffd700';
             ctx.beginPath();
             ctx.arc(0, 0, 12, 0, Math.PI * 2);
             ctx.fill();
@@ -514,6 +695,45 @@ class Coin {
             ctx.beginPath();
             ctx.arc(0, 0, 8, 0, Math.PI * 2);
             ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+    }
+}
+
+class PowerUp {
+    constructor(x, y) {
+        this.type = 'powerup';
+        this.x = x;
+        this.y = y;
+        this.w = 28;
+        this.h = 28;
+        this.collected = false;
+        this.pulse = 0;
+    }
+    
+    update() {
+        this.pulse += 0.1;
+    }
+    
+    draw() {
+        if (!this.collected) {
+            const cx = this.x - game.camera.x;
+            const cy = this.y - game.camera.y;
+            const scale = 1 + Math.sin(this.pulse) * 0.2;
+            ctx.save();
+            ctx.translate(cx + this.w/2, cy + this.h/2);
+            ctx.scale(scale, scale);
+            ctx.fillStyle = '#ff3366';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ff3366';
+            ctx.beginPath();
+            ctx.arc(0, 0, 14, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-6, -2, 12, 4);
+            ctx.fillRect(-2, -6, 4, 12);
+            ctx.shadowBlur = 0;
             ctx.restore();
         }
     }
@@ -547,33 +767,25 @@ class Enemy {
             const cx = this.x - game.camera.x;
             const cy = this.y - game.camera.y;
             
-            // Draw Marine-style enemy
-            // Navy cap/head
             ctx.fillStyle = '#0047ab';
             ctx.fillRect(cx + 6, cy + 2, 24, 8);
             
-            // Face
             ctx.fillStyle = '#fdc689';
             ctx.fillRect(cx + 8, cy + 8, 20, 12);
             
-            // Eyes (angry)
             ctx.fillStyle = '#000';
             ctx.fillRect(cx + 12, cy + 12, 3, 3);
             ctx.fillRect(cx + 21, cy + 12, 3, 3);
             
-            // Marine coat (white with blue)
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(cx + 10, cy + 20, 16, 10);
             
-            // Blue trim
             ctx.fillStyle = '#0047ab';
             ctx.fillRect(cx + 10, cy + 20, 16, 2);
             
-            // Pants
             ctx.fillStyle = '#000080';
             ctx.fillRect(cx + 12, cy + 30, 12, 6);
             
-            // Marine symbol
             ctx.fillStyle = '#0047ab';
             ctx.fillRect(cx + 16, cy + 22, 4, 6);
         }
@@ -639,6 +851,25 @@ class Particle {
     }
 }
 
+function addCombo() {
+    game.combo++;
+    game.comboTimer = 180;
+    if (game.combo > game.maxCombo) {
+        game.maxCombo = game.combo;
+    }
+    if (game.combo > 1) {
+        const comboEl = document.getElementById('comboDisplay');
+        document.getElementById('comboNum').textContent = game.combo;
+        comboEl.style.display = 'block';
+        setTimeout(() => { comboEl.style.display = 'none'; }, 1000);
+    }
+}
+
+function resetCombo() {
+    game.combo = 0;
+    game.comboTimer = 0;
+}
+
 function createLevel(level) {
     game.entities = [];
     
@@ -657,9 +888,12 @@ function createLevel(level) {
         game.entities.push(new Platform(2100, H - 300, 180, 30));
         game.entities.push(new Platform(2400, H - 400, 150, 30));
         
-        for (let i = 350; i < 3000; i += 300) {
+        for (let i = 350; i < 3000; i += 200) {
             game.entities.push(new Coin(i, H - 350));
         }
+        
+        game.entities.push(new PowerUp(1000, H - 450));
+        game.entities.push(new PowerUp(2000, H - 350));
         
         game.entities.push(new Enemy(700, H - 340, 100));
         game.entities.push(new Enemy(1300, H - 290, 120));
@@ -679,12 +913,15 @@ function createLevel(level) {
             game.entities.push(new Platform(400 + i * 400, H - 200 - i * 50, 150, 30));
         }
         
-        for (let i = 300; i < 4000; i += 250) {
+        for (let i = 300; i < 4000; i += 180) {
             game.entities.push(new Coin(i, H - 300 - Math.random() * 200));
         }
         
-        for (let i = 0; i < 8; i++) {
-            game.entities.push(new Enemy(600 + i * 500, H - 250 - i * 50, 150));
+        game.entities.push(new PowerUp(1200, H - 400));
+        game.entities.push(new PowerUp(2600, H - 350));
+        
+        for (let i = 0; i < 10; i++) {
+            game.entities.push(new Enemy(600 + i * 400, H - 250 - i * 50, 150));
         }
         
         game.entities.push(new Goal(3700, H - 460));
@@ -694,16 +931,20 @@ function createLevel(level) {
             game.entities.push(new Platform(i, H - 60, 200, 60, '#2d4a3e'));
         }
         
-        for (let i = 0; i < 10; i++) {
-            game.entities.push(new Platform(300 + i * 450, H - 250 - Math.random() * 200, 120, 30));
+        for (let i = 0; i < 12; i++) {
+            game.entities.push(new Platform(300 + i * 380, H - 250 - Math.random() * 200, 120, 30));
         }
         
-        for (let i = 400; i < 5000; i += 200) {
+        for (let i = 400; i < 5000; i += 150) {
             game.entities.push(new Coin(i, H - 400 - Math.random() * 150));
         }
         
-        for (let i = 0; i < 12; i++) {
-            game.entities.push(new Enemy(500 + i * 400, H - 300, 180));
+        game.entities.push(new PowerUp(1500, H - 450));
+        game.entities.push(new PowerUp(3000, H - 400));
+        game.entities.push(new PowerUp(4200, H - 350));
+        
+        for (let i = 0; i < 15; i++) {
+            game.entities.push(new Enemy(500 + i * 320, H - 300, 180));
         }
         
         game.entities.push(new Goal(4700, H - 460));
@@ -724,19 +965,28 @@ function updateHUD() {
     document.getElementById('lives').textContent = game.lives;
     document.getElementById('coins').textContent = game.coins;
     document.getElementById('score').textContent = game.score;
+    document.getElementById('combo').textContent = game.combo;
     document.getElementById('levelNum').textContent = game.level;
+    
+    if (game.combo > 0) {
+        document.getElementById('powerBar').style.display = 'block';
+        document.getElementById('powerFill').style.width = Math.min(100, game.comboTimer / 180 * 100) + '%';
+    } else {
+        document.getElementById('powerBar').style.display = 'none';
+    }
 }
 
 function levelComplete() {
     if (!game.levelComplete) {
         game.levelComplete = true;
-        game.score += game.coins * 10 + game.lives * 200;
+        game.score += game.coins * 10 + game.lives * 200 + game.maxCombo * 50;
         
         if (game.level > game.maxLevelReached) {
             game.maxLevelReached = game.level;
         }
         
         document.getElementById('levelScore').textContent = game.score;
+        document.getElementById('maxCombo').textContent = game.maxCombo;
         document.getElementById('levelComplete').style.display = 'block';
     }
 }
@@ -745,6 +995,8 @@ function nextLevel() {
     document.getElementById('levelComplete').style.display = 'none';
     game.level++;
     game.levelComplete = false;
+    game.maxCombo = 0;
+    resetCombo();
     game.player = new Player(50, 300);
     createLevel(game.level);
     updateHUD();
@@ -766,6 +1018,24 @@ function restart() {
     game.level = game.maxLevelReached;
     game.lives = 3;
     game.coins = 0;
+    game.maxCombo = 0;
+    resetCombo();
+    game.player = new Player(50, 300);
+    createLevel(game.level);
+    updateHUD();
+}
+
+function resetGame() {
+    document.getElementById('gameOver').style.display = 'none';
+    game.gameOver = false;
+    game.levelComplete = false;
+    game.level = 1;
+    game.maxLevelReached = 1;
+    game.lives = 3;
+    game.coins = 0;
+    game.score = 0;
+    game.maxCombo = 0;
+    resetCombo();
     game.player = new Player(50, 300);
     createLevel(game.level);
     updateHUD();
@@ -803,12 +1073,27 @@ function draw() {
         p.update();
         p.draw();
     });
+    
+    game.floatingTexts = game.floatingTexts.filter(t => t.life > 0);
+    game.floatingTexts.forEach(t => {
+        t.update();
+        t.draw();
+    });
+    
+    if (game.comboTimer > 0) {
+        game.comboTimer--;
+        if (game.comboTimer === 0) {
+            resetCombo();
+            updateHUD();
+        }
+    }
 }
 
 function loop() {
     if (!game.gameOver && !game.levelComplete) {
         game.player.update();
         updateCamera();
+        updateHUD();
     }
     draw();
     requestAnimationFrame(loop);
