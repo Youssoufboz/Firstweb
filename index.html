@@ -1,220 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Echo Soul - AI Game Challenge</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: #050505;
-            color: #00ffcc;
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            overflow: hidden;
-        }
-        canvas {
-            border: 2px solid #1a1a1a;
-            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
-            cursor: none;
-        }
-        .ui {
-            margin-top: 10px;
-            text-align: center;
-        }
-        kbd {
-            background: #222;
-            padding: 2px 6px;
-            border-radius: 4px;
-            border: 1px solid #444;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echo Soul - Mobile</title>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        background: #050505;
+        color: #00ffcc;
+        font-family: 'Courier New', monospace;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        overflow: hidden;
+        touch-action: none;
+    }
+    canvas {
+        border: 2px solid #1a1a1a;
+        box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+    }
+    .ui {
+        margin-top: 10px;
+        display: flex;
+        gap: 10px;
+    }
+    button {
+        background: #222;
+        color: #00ffcc;
+        border: 1px solid #444;
+        border-radius: 5px;
+        padding: 10px 15px;
+        font-size: 18px;
+    }
+</style>
 </head>
 <body>
 
-    <div class="ui">
-        <h2>ECHO SOUL</h2>
-        <p>Use <kbd>A</kbd> <kbd>D</kbd> to move | <kbd>SPACE</kbd> to Jump & Pulse</p>
-    </div>
-    <canvas id="gameCanvas"></canvas>
+<canvas id="gameCanvas"></canvas>
+
+<div class="ui">
+    <button id="leftBtn">◀</button>
+    <button id="jumpBtn">▲</button>
+    <button id="rightBtn">▶</button>
+</div>
 
 <script>
-/**
- * PRO-DEV GAME ENGINE ARCHITECTURE
- * Features: AABB Collision, Particle Systems, Procedural Rendering
- */
-
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-canvas.width = 800;
-canvas.height = 500;
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight * 0.7;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
 
 // Game Constants
 const GRAVITY = 0.6;
 const FRICTION = 0.8;
 
-// Input Handling
-const keys = {};
-window.addEventListener('keydown', e => keys[e.code] = true);
-window.addEventListener('keyup', e => keys[e.code] = false);
+// Touch Input
+const keys = { left: false, right: false, jump: false };
+document.getElementById('leftBtn').addEventListener('touchstart', e => keys.left = true);
+document.getElementById('leftBtn').addEventListener('touchend', e => keys.left = false);
+
+document.getElementById('rightBtn').addEventListener('touchstart', e => keys.right = true);
+document.getElementById('rightBtn').addEventListener('touchend', e => keys.right = false);
+
+document.getElementById('jumpBtn').addEventListener('touchstart', e => keys.jump = true);
+document.getElementById('jumpBtn').addEventListener('touchend', e => keys.jump = false);
+
+// Classes (Player, Platform, Particle) same as your original, just adapt movement
 
 class Platform {
     constructor(x, y, w, h) {
-        this.x = x;
-        this.y = y;
-        this.w = w;
-        this.h = h;
-        this.visibility = 0; // Starts invisible
+        this.x = x; this.y = y; this.w = w; this.h = h; this.visibility = 0;
     }
-
     draw() {
         if (this.visibility > 0) {
             ctx.fillStyle = `rgba(0, 255, 204, ${this.visibility})`;
             ctx.fillRect(this.x, this.y, this.w, this.h);
-            this.visibility -= 0.01; // Fade out over time
+            this.visibility -= 0.01;
         }
     }
 }
 
 class Particle {
     constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.radius = Math.random() * 3;
-        this.vx = (Math.random() - 0.5) * 4;
-        this.vy = (Math.random() - 0.5) * 4;
+        this.x = x; this.y = y; this.radius = Math.random() * 3;
+        this.vx = (Math.random() - 0.5) * 4; this.vy = (Math.random() - 0.5) * 4;
         this.life = 1.0;
     }
-    update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        this.life -= 0.02;
-    }
-    draw() {
-        ctx.fillStyle = `rgba(0, 255, 204, ${this.life})`;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-    }
+    update() { this.x += this.vx; this.y += this.vy; this.life -= 0.02; }
+    draw() { ctx.fillStyle = `rgba(0,255,204,${this.life})`; ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fill(); }
 }
 
 class Player {
-    constructor() {
-        this.x = 100;
-        this.y = 100;
-        this.w = 20;
-        this.h = 20;
-        this.vx = 0;
-        this.vy = 0;
-        this.speed = 5;
-        this.jumpPower = -12;
-        this.grounded = false;
-    }
-
+    constructor() { this.x = 100; this.y = 100; this.w = 20; this.h = 20; this.vx = 0; this.vy = 0; this.speed = 5; this.jumpPower = -12; this.grounded = false; }
     update(platforms) {
-        // Horizontal Movement
-        if (keys['KeyD']) this.vx += 0.8;
-        if (keys['KeyA']) this.vx -= 0.8;
-        
-        this.vx *= FRICTION;
-        this.x += this.vx;
+        if (keys.right) this.vx += 0.8;
+        if (keys.left) this.vx -= 0.8;
+        this.vx *= FRICTION; this.x += this.vx;
 
-        // Pulse logic: If moving or jumping, reveal nearby platforms
-        if (Math.abs(this.vx) > 1 || !this.grounded) {
-            this.emitPulse(platforms, 150);
-        }
+        if (Math.abs(this.vx) > 1 || !this.grounded) this.emitPulse(platforms, 150);
 
-        // Vertical Movement
-        this.vy += GRAVITY;
-        this.y += this.vy;
+        this.vy += GRAVITY; this.y += this.vy; this.grounded = false;
 
-        this.grounded = false;
-
-        // Collision Detection (AABB)
         for (let p of platforms) {
-            if (this.x < p.x + p.w && this.x + this.w > p.x &&
-                this.y < p.y + p.h && this.y + this.h > p.y) {
-                
-                // Determine collision side
+            if (this.x < p.x + p.w && this.x + this.w > p.x && this.y < p.y + p.h && this.y + this.h > p.y) {
                 const overlapX = Math.min(this.x + this.w - p.x, p.x + p.w - this.x);
                 const overlapY = Math.min(this.y + this.h - p.y, p.y + p.h - this.y);
-
-                if (overlapX < overlapY) {
-                    this.x += (this.x < p.x) ? -overlapX : overlapX;
-                    this.vx = 0;
-                } else {
-                    if (this.vy > 0) {
-                        this.y -= overlapY;
-                        this.vy = 0;
-                        this.grounded = true;
-                    } else {
-                        this.y += overlapY;
-                        this.vy = 0;
-                    }
-                }
+                if (overlapX < overlapY) { this.x += (this.x < p.x ? -overlapX : overlapX); this.vx = 0; }
+                else { if (this.vy > 0) { this.y -= overlapY; this.vy = 0; this.grounded = true; } else { this.y += overlapY; this.vy = 0; } }
             }
         }
 
-        if (keys['Space'] && this.grounded) {
-            this.vy = this.jumpPower;
-            this.grounded = false;
-            this.emitPulse(platforms, 400); // Massive jump pulse
-        }
+        if (keys.jump && this.grounded) { this.vy = this.jumpPower; this.grounded = false; this.emitPulse(platforms,400); }
     }
-
-    emitPulse(platforms, range) {
-        platforms.forEach(p => {
-            const dist = Math.hypot((this.x - p.x), (this.y - p.y));
-            if (dist < range) {
-                p.visibility = Math.max(p.visibility, (1 - dist/range));
-            }
-        });
-    }
-
-    draw() {
-        ctx.fillStyle = '#fff';
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#00ffcc';
-        ctx.fillRect(this.x, this.y, this.w, this.h);
-        ctx.shadowBlur = 0;
-    }
+    emitPulse(platforms, range) { platforms.forEach(p => { const dist = Math.hypot(this.x-p.x,this.y-p.y); if (dist<range) p.visibility=Math.max(p.visibility,1-dist/range); }); }
+    draw() { ctx.fillStyle='#fff'; ctx.shadowBlur=15; ctx.shadowColor='#00ffcc'; ctx.fillRect(this.x,this.y,this.w,this.h); ctx.shadowBlur=0; }
 }
 
 // Game State
 const player = new Player();
 const platforms = [
-    new Platform(0, 480, 800, 20),    // Floor
-    new Platform(150, 380, 150, 20),  // Platform 1
-    new Platform(400, 300, 200, 20),  // Platform 2
-    new Platform(100, 220, 100, 20),  // Platform 3
-    new Platform(600, 180, 150, 20),  // Platform 4
-    new Platform(300, 100, 80, 20)    // Platform 5
+    new Platform(0, canvas.height-20, canvas.width, 20),
+    new Platform(150, canvas.height-120, 150, 20),
+    new Platform(400, canvas.height-200, 200, 20),
+    new Platform(100, canvas.height-280, 100, 20),
+    new Platform(600, canvas.height-320, 150, 20),
+    new Platform(300, canvas.height-400, 80, 20)
 ];
 let particles = [];
 
 function animate() {
-    // Clear Screen with Motion Blur
-    ctx.fillStyle = 'rgba(5, 5, 5, 0.3)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    platforms.forEach(p => p.draw());
-    
-    player.update(platforms);
-    player.draw();
-
-    // Particle Effect for movement
-    if (Math.abs(player.vx) > 2) {
-        particles.push(new Particle(player.x + player.w/2, player.y + player.h));
-    }
-    particles = particles.filter(p => p.life > 0);
-    particles.forEach(p => { p.update(); p.draw(); });
-
+    ctx.fillStyle='rgba(5,5,5,0.3)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    platforms.forEach(p=>p.draw());
+    player.update(platforms); player.draw();
+    if (Math.abs(player.vx)>2) particles.push(new Particle(player.x+player.w/2,player.y+player.h));
+    particles = particles.filter(p=>p.life>0); particles.forEach(p=>{p.update();p.draw();});
     requestAnimationFrame(animate);
 }
 
