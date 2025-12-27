@@ -1,228 +1,224 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Star Wars Mobile Shooter</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-
-<style>
-html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    background: black;
-    font-family: Arial, sans-serif;
-    touch-action: manipulation;
-}
-canvas {
-    display: block;
-}
-#ui {
-    position: fixed;
-    top: 10px;
-    width: 100%;
-    text-align: center;
-    color: white;
-    font-size: 18px;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echo Soul - AI Game Challenge</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #050505;
+            color: #00ffcc;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        canvas {
+            border: 2px solid #1a1a1a;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+            cursor: none;
+        }
+        .ui {
+            margin-top: 10px;
+            text-align: center;
+        }
+        kbd {
+            background: #222;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #444;
+        }
+    </style>
 </head>
 <body>
 
-<canvas id="game"></canvas>
-<div id="ui">Score: <span id="score">0</span></div>
+    <div class="ui">
+        <h2>ECHO SOUL</h2>
+        <p>Use <kbd>A</kbd> <kbd>D</kbd> to move | <kbd>SPACE</kbd> to Jump & Pulse</p>
+    </div>
+    <canvas id="gameCanvas"></canvas>
 
 <script>
-/* =======================
-   SETUP
-======================= */
-const canvas = document.getElementById('game');
+/**
+ * PRO-DEV GAME ENGINE ARCHITECTURE
+ * Features: AABB Collision, Particle Systems, Procedural Rendering
+ */
+
+const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-function resize() {
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
+canvas.width = 800;
+canvas.height = 500;
 
-/* =======================
-   STARFIELD BACKGROUND
-======================= */
-const stars = [];
-for(let i=0;i<150;i++){
-    stars.push({x:Math.random()*canvas.width, y:Math.random()*canvas.height, size:Math.random()*2+1});
-}
+// Game Constants
+const GRAVITY = 0.6;
+const FRICTION = 0.8;
 
-/* =======================
-   PLAYER SPACESHIP
-======================= */
-const player = {
-    x: canvas.width/2,
-    y: canvas.height - 100,
-    width: 40,
-    height: 60,
-    speed: 7,
-    lasers: []
-};
+// Input Handling
+const keys = {};
+window.addEventListener('keydown', e => keys[e.code] = true);
+window.addEventListener('keyup', e => keys[e.code] = false);
 
-/* =======================
-   OBSTACLES (PLANETS/ASTEROIDS)
-======================= */
-const obstacles = [];
-let spawnTimer = 0;
-
-/* =======================
-   INPUT (TOUCH)
-======================= */
-const input = {left:false, right:false, fire:false};
-
-document.addEventListener("touchstart", e=>{
-    const x = e.touches[0].clientX;
-    const y = e.touches[0].clientY;
-    if(y < canvas.height/2){
-        input.fire = true;
-    } else if(x < canvas.width/2){
-        input.left = true;
-    } else {
-        input.right = true;
-    }
-});
-document.addEventListener("touchend", e=>{
-    input.left = false;
-    input.right = false;
-    input.fire = false;
-});
-
-/* =======================
-   COLLISION
-======================= */
-function hit(a,b){
-    return a.x < b.x+b.width && a.x+a.width > b.x &&
-           a.y < b.y+b.height && a.y+a.height > b.y;
-}
-
-/* =======================
-   GAME STATE
-======================= */
-let score = 0;
-let running = true;
-
-/* =======================
-   GAME LOOP
-======================= */
-function update(){
-    if(!running) return;
-
-    // Clear
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-
-    // Stars
-    ctx.fillStyle = 'white';
-    stars.forEach(s=>{
-        s.y += 1;
-        if(s.y>canvas.height) s.y=0;
-        ctx.fillRect(s.x,s.y,s.size,s.size);
-    });
-
-    // Player movement
-    if(input.left) player.x -= player.speed;
-    if(input.right) player.x += player.speed;
-    if(player.x < 0) player.x=0;
-    if(player.x + player.width > canvas.width) player.x = canvas.width - player.width;
-
-    // Fire lasers
-    if(input.fire && player.lasers.length < 3){
-        player.lasers.push({x:player.x+player.width/2-3, y:player.y-10, width:6, height:20, speed:10});
-        input.fire=false; // single shot per tap
+class Platform {
+    constructor(x, y, w, h) {
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+        this.visibility = 0; // Starts invisible
     }
 
-    // Draw player (spaceship)
-    ctx.fillStyle = '#00ffdd';
-    ctx.beginPath();
-    ctx.moveTo(player.x, player.y+player.height);
-    ctx.lineTo(player.x+player.width/2, player.y);
-    ctx.lineTo(player.x+player.width, player.y+player.height);
-    ctx.closePath();
-    ctx.fill();
-
-    // Update and draw lasers
-    ctx.fillStyle = '#ffdd00';
-    player.lasers.forEach((l,i)=>{
-        l.y -= l.speed;
-        ctx.fillRect(l.x,l.y,l.width,l.height);
-        if(l.y < -20) player.lasers.splice(i,1);
-    });
-
-    // Spawn obstacles
-    spawnTimer++;
-    if(spawnTimer>50){
-        obstacles.push({
-            x: Math.random()*(canvas.width-60),
-            y: -60,
-            width: 60,
-            height: 60,
-            color: `hsl(${Math.random()*360}, 70%, 50%)`,
-            speed: 3 + Math.random()*2
-        });
-        spawnTimer=0;
+    draw() {
+        if (this.visibility > 0) {
+            ctx.fillStyle = `rgba(0, 255, 204, ${this.visibility})`;
+            ctx.fillRect(this.x, this.y, this.w, this.h);
+            this.visibility -= 0.01; // Fade out over time
+        }
     }
+}
 
-    // Update obstacles
-    obstacles.forEach((o,oi)=>{
-        o.y += o.speed;
-        ctx.fillStyle = o.color;
+class Particle {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.radius = Math.random() * 3;
+        this.vx = (Math.random() - 0.5) * 4;
+        this.vy = (Math.random() - 0.5) * 4;
+        this.life = 1.0;
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life -= 0.02;
+    }
+    draw() {
+        ctx.fillStyle = `rgba(0, 255, 204, ${this.life})`;
         ctx.beginPath();
-        ctx.arc(o.x+o.width/2, o.y+o.height/2, o.width/2, 0, Math.PI*2);
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
+    }
+}
 
-        // Collision with player
-        if(hit(player,o)){
-            running=false;
-            gameOver();
+class Player {
+    constructor() {
+        this.x = 100;
+        this.y = 100;
+        this.w = 20;
+        this.h = 20;
+        this.vx = 0;
+        this.vy = 0;
+        this.speed = 5;
+        this.jumpPower = -12;
+        this.grounded = false;
+    }
+
+    update(platforms) {
+        // Horizontal Movement
+        if (keys['KeyD']) this.vx += 0.8;
+        if (keys['KeyA']) this.vx -= 0.8;
+        
+        this.vx *= FRICTION;
+        this.x += this.vx;
+
+        // Pulse logic: If moving or jumping, reveal nearby platforms
+        if (Math.abs(this.vx) > 1 || !this.grounded) {
+            this.emitPulse(platforms, 150);
         }
 
-        // Collision with lasers
-        player.lasers.forEach((l,li)=>{
-            if(hit(l,o)){
-                obstacles.splice(oi,1);
-                player.lasers.splice(li,1);
-                score+=10;
+        // Vertical Movement
+        this.vy += GRAVITY;
+        this.y += this.vy;
+
+        this.grounded = false;
+
+        // Collision Detection (AABB)
+        for (let p of platforms) {
+            if (this.x < p.x + p.w && this.x + this.w > p.x &&
+                this.y < p.y + p.h && this.y + this.h > p.y) {
+                
+                // Determine collision side
+                const overlapX = Math.min(this.x + this.w - p.x, p.x + p.w - this.x);
+                const overlapY = Math.min(this.y + this.h - p.y, p.y + p.h - this.y);
+
+                if (overlapX < overlapY) {
+                    this.x += (this.x < p.x) ? -overlapX : overlapX;
+                    this.vx = 0;
+                } else {
+                    if (this.vy > 0) {
+                        this.y -= overlapY;
+                        this.vy = 0;
+                        this.grounded = true;
+                    } else {
+                        this.y += overlapY;
+                        this.vy = 0;
+                    }
+                }
+            }
+        }
+
+        if (keys['Space'] && this.grounded) {
+            this.vy = this.jumpPower;
+            this.grounded = false;
+            this.emitPulse(platforms, 400); // Massive jump pulse
+        }
+    }
+
+    emitPulse(platforms, range) {
+        platforms.forEach(p => {
+            const dist = Math.hypot((this.x - p.x), (this.y - p.y));
+            if (dist < range) {
+                p.visibility = Math.max(p.visibility, (1 - dist/range));
             }
         });
-    });
+    }
 
-    // Draw score
-    document.getElementById("score").textContent = score;
-
-    requestAnimationFrame(update);
+    draw() {
+        ctx.fillStyle = '#fff';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00ffcc';
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+        ctx.shadowBlur = 0;
+    }
 }
 
-/* =======================
-   GAME OVER
-======================= */
-function gameOver(){
-    const go = document.createElement('div');
-    go.style.position='fixed';
-    go.style.inset='0';
-    go.style.background='rgba(0,0,0,0.7)';
-    go.style.display='flex';
-    go.style.flexDirection='column';
-    go.style.justifyContent='center';
-    go.style.alignItems='center';
-    go.style.color='white';
-    go.style.fontSize='24px';
-    go.innerHTML = `Game Over<br>Score: ${score}<br><button style="margin-top:20px;padding:10px 20px;font-size:18px;" onclick="location.reload()">Restart</button>`;
-    document.body.appendChild(go);
+// Game State
+const player = new Player();
+const platforms = [
+    new Platform(0, 480, 800, 20),    // Floor
+    new Platform(150, 380, 150, 20),  // Platform 1
+    new Platform(400, 300, 200, 20),  // Platform 2
+    new Platform(100, 220, 100, 20),  // Platform 3
+    new Platform(600, 180, 150, 20),  // Platform 4
+    new Platform(300, 100, 80, 20)    // Platform 5
+];
+let particles = [];
+
+function animate() {
+    // Clear Screen with Motion Blur
+    ctx.fillStyle = 'rgba(5, 5, 5, 0.3)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    platforms.forEach(p => p.draw());
+    
+    player.update(platforms);
+    player.draw();
+
+    // Particle Effect for movement
+    if (Math.abs(player.vx) > 2) {
+        particles.push(new Particle(player.x + player.w/2, player.y + player.h));
+    }
+    particles = particles.filter(p => p.life > 0);
+    particles.forEach(p => { p.update(); p.draw(); });
+
+    requestAnimationFrame(animate);
 }
 
-/* =======================
-   START LOOP
-======================= */
-update();
-
+animate();
 </script>
-
 </body>
 </html>
