@@ -2,23 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Tap Dodge</title>
+<title>Star Wars Mobile Shooter</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
 <style>
 html, body {
     margin: 0;
     padding: 0;
-    background: #0f1220;
     overflow: hidden;
+    background: black;
     font-family: Arial, sans-serif;
     touch-action: manipulation;
 }
-
 canvas {
     display: block;
 }
-
 #ui {
     position: fixed;
     top: 10px;
@@ -27,158 +25,203 @@ canvas {
     color: white;
     font-size: 18px;
 }
-
-#gameOver {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    color: white;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    font-size: 22px;
-}
-button {
-    margin-top: 15px;
-    padding: 12px 24px;
-    font-size: 18px;
-    border: none;
-    border-radius: 8px;
-}
 </style>
 </head>
-
 <body>
 
 <canvas id="game"></canvas>
-
 <div id="ui">Score: <span id="score">0</span></div>
 
-<div id="gameOver">
-    <div>Game Over</div>
-    <div>Score: <span id="finalScore"></span></div>
-    <button onclick="restart()">Restart</button>
-</div>
-
 <script>
-/* =========================
+/* =======================
    SETUP
-========================= */
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+======================= */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
 
 function resize() {
     canvas.width = innerWidth;
     canvas.height = innerHeight;
 }
-window.addEventListener("resize", resize);
+window.addEventListener('resize', resize);
 resize();
 
-/* =========================
-   GAME STATE
-========================= */
-let running = true;
-let score = 0;
+/* =======================
+   STARFIELD BACKGROUND
+======================= */
+const stars = [];
+for(let i=0;i<150;i++){
+    stars.push({x:Math.random()*canvas.width, y:Math.random()*canvas.height, size:Math.random()*2+1});
+}
 
+/* =======================
+   PLAYER SPACESHIP
+======================= */
 const player = {
-    x: canvas.width / 2,
-    y: canvas.height - 120,
-    size: 40,
-    speed: 7
+    x: canvas.width/2,
+    y: canvas.height - 100,
+    width: 40,
+    height: 60,
+    speed: 7,
+    lasers: []
 };
 
-let obstacles = [];
+/* =======================
+   OBSTACLES (PLANETS/ASTEROIDS)
+======================= */
+const obstacles = [];
+let spawnTimer = 0;
 
-/* =========================
-   INPUT (PHONE ONLY)
-========================= */
-document.addEventListener("touchstart", e => {
+/* =======================
+   INPUT (TOUCH)
+======================= */
+const input = {left:false, right:false, fire:false};
+
+document.addEventListener("touchstart", e=>{
     const x = e.touches[0].clientX;
-    if (x < canvas.width / 2) {
-        player.x -= player.speed * 10;
+    const y = e.touches[0].clientY;
+    if(y < canvas.height/2){
+        input.fire = true;
+    } else if(x < canvas.width/2){
+        input.left = true;
     } else {
-        player.x += player.speed * 10;
+        input.right = true;
     }
 });
+document.addEventListener("touchend", e=>{
+    input.left = false;
+    input.right = false;
+    input.fire = false;
+});
 
-/* =========================
-   SPAWN
-========================= */
-function spawnObstacle() {
-    obstacles.push({
-        x: Math.random() * (canvas.width - 40),
-        y: -40,
-        size: 40,
-        speed: 4 + score * 0.05
-    });
-}
-setInterval(spawnObstacle, 700);
-
-/* =========================
+/* =======================
    COLLISION
-========================= */
-function hit(a, b) {
-    return (
-        a.x < b.x + b.size &&
-        a.x + a.size > b.x &&
-        a.y < b.y + b.size &&
-        a.y + a.size > b.y
-    );
+======================= */
+function hit(a,b){
+    return a.x < b.x+b.width && a.x+a.width > b.x &&
+           a.y < b.y+b.height && a.y+a.height > b.y;
 }
 
-/* =========================
-   LOOP
-========================= */
-function update() {
-    if (!running) return;
+/* =======================
+   GAME STATE
+======================= */
+let score = 0;
+let running = true;
 
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+/* =======================
+   GAME LOOP
+======================= */
+function update(){
+    if(!running) return;
 
-    // Player
-    ctx.fillStyle = "#4cd137";
-    ctx.fillRect(player.x, player.y, player.size, player.size);
+    // Clear
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    // Obstacles
-    ctx.fillStyle = "#e84118";
-    obstacles.forEach(o => {
-        o.y += o.speed;
-        ctx.fillRect(o.x, o.y, o.size, o.size);
-
-        if (hit(player, o)) {
-            endGame();
-        }
+    // Stars
+    ctx.fillStyle = 'white';
+    stars.forEach(s=>{
+        s.y += 1;
+        if(s.y>canvas.height) s.y=0;
+        ctx.fillRect(s.x,s.y,s.size,s.size);
     });
 
-    // Cleanup
-    obstacles = obstacles.filter(o => o.y < canvas.height + 50);
+    // Player movement
+    if(input.left) player.x -= player.speed;
+    if(input.right) player.x += player.speed;
+    if(player.x < 0) player.x=0;
+    if(player.x + player.width > canvas.width) player.x = canvas.width - player.width;
 
-    // Score
-    score++;
+    // Fire lasers
+    if(input.fire && player.lasers.length < 3){
+        player.lasers.push({x:player.x+player.width/2-3, y:player.y-10, width:6, height:20, speed:10});
+        input.fire=false; // single shot per tap
+    }
+
+    // Draw player (spaceship)
+    ctx.fillStyle = '#00ffdd';
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y+player.height);
+    ctx.lineTo(player.x+player.width/2, player.y);
+    ctx.lineTo(player.x+player.width, player.y+player.height);
+    ctx.closePath();
+    ctx.fill();
+
+    // Update and draw lasers
+    ctx.fillStyle = '#ffdd00';
+    player.lasers.forEach((l,i)=>{
+        l.y -= l.speed;
+        ctx.fillRect(l.x,l.y,l.width,l.height);
+        if(l.y < -20) player.lasers.splice(i,1);
+    });
+
+    // Spawn obstacles
+    spawnTimer++;
+    if(spawnTimer>50){
+        obstacles.push({
+            x: Math.random()*(canvas.width-60),
+            y: -60,
+            width: 60,
+            height: 60,
+            color: `hsl(${Math.random()*360}, 70%, 50%)`,
+            speed: 3 + Math.random()*2
+        });
+        spawnTimer=0;
+    }
+
+    // Update obstacles
+    obstacles.forEach((o,oi)=>{
+        o.y += o.speed;
+        ctx.fillStyle = o.color;
+        ctx.beginPath();
+        ctx.arc(o.x+o.width/2, o.y+o.height/2, o.width/2, 0, Math.PI*2);
+        ctx.fill();
+
+        // Collision with player
+        if(hit(player,o)){
+            running=false;
+            gameOver();
+        }
+
+        // Collision with lasers
+        player.lasers.forEach((l,li)=>{
+            if(hit(l,o)){
+                obstacles.splice(oi,1);
+                player.lasers.splice(li,1);
+                score+=10;
+            }
+        });
+    });
+
+    // Draw score
     document.getElementById("score").textContent = score;
 
     requestAnimationFrame(update);
 }
 
+/* =======================
+   GAME OVER
+======================= */
+function gameOver(){
+    const go = document.createElement('div');
+    go.style.position='fixed';
+    go.style.inset='0';
+    go.style.background='rgba(0,0,0,0.7)';
+    go.style.display='flex';
+    go.style.flexDirection='column';
+    go.style.justifyContent='center';
+    go.style.alignItems='center';
+    go.style.color='white';
+    go.style.fontSize='24px';
+    go.innerHTML = `Game Over<br>Score: ${score}<br><button style="margin-top:20px;padding:10px 20px;font-size:18px;" onclick="location.reload()">Restart</button>`;
+    document.body.appendChild(go);
+}
+
+/* =======================
+   START LOOP
+======================= */
 update();
 
-/* =========================
-   GAME OVER
-========================= */
-function endGame() {
-    running = false;
-    document.getElementById("finalScore").textContent = score;
-    document.getElementById("gameOver").style.display = "flex";
-}
-
-function restart() {
-    score = 0;
-    obstacles = [];
-    player.x = canvas.width / 2;
-    running = true;
-    document.getElementById("gameOver").style.display = "none";
-    update();
-}
 </script>
 
 </body>
