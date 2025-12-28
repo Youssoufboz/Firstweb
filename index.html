@@ -458,17 +458,29 @@ class Player {
             this.attackCooldown = 20;
             game.keys.attackPressed = false;
             
+            // Extended reach with stretched arm
+            const attackReach = 80;
+            const attackX = this.facingRight ? this.x + this.w : this.x - attackReach;
+            const attackW = attackReach;
+            
             game.entities.forEach(ent => {
                 if (ent.type === 'enemy' && !ent.dead) {
-                    const dist = Math.hypot(this.x - ent.x, this.y - ent.y);
-                    if (dist < 60) {
+                    // Check if enemy is in stretched punch range
+                    if (attackX < ent.x + ent.w && attackX + attackW > ent.x &&
+                        this.y < ent.y + ent.h && this.y + this.h > ent.y) {
                         ent.dead = true;
                         addCombo();
                         game.score += 100 * game.combo;
                         updateHUD();
-                        game.floatingTexts.push(new FloatingText(ent.x + ent.w/2, ent.y, '+' + (100 * game.combo), '#ffd700'));
-                        for (let j = 0; j < 15; j++) {
+                        game.floatingTexts.push(new FloatingText(ent.x + ent.w/2, ent.y, 'GUM-GUM! +' + (100 * game.combo), '#ffd700'));
+                        // Bigger explosion for punch
+                        for (let j = 0; j < 20; j++) {
                             game.particles.push(new Particle(ent.x + ent.w/2, ent.y + ent.h/2, '#ff3366'));
+                        }
+                        // Add impact particles at fist location
+                        const fistX = this.facingRight ? this.x + this.w + 40 : this.x - 40;
+                        for (let j = 0; j < 10; j++) {
+                            game.particles.push(new Particle(fistX, this.y + this.h/2, '#ffffff'));
                         }
                     }
                 }
@@ -586,15 +598,50 @@ class Player {
         ctx.fillStyle = '#dc143c';
         ctx.fillRect(cx + 10, cy + 20, 12, 12);
         
-        // Arms
+        // Arms - STRETCHY when attacking!
         ctx.fillStyle = '#fdc689';
         if (this.attacking) {
+            // Draw stretched arm like Luffy's Gum-Gum Pistol!
+            const stretchLength = 40;
             if (this.facingRight) {
-                ctx.fillRect(cx + 22, cy + 22, 8, 4);
+                // Stretched right arm
+                ctx.fillRect(cx + 22, cy + 23, stretchLength, 3);
+                // Fist at the end
+                ctx.fillStyle = '#fdc689';
+                ctx.fillRect(cx + 22 + stretchLength, cy + 20, 8, 8);
+                // Impact lines
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(cx + 22 + stretchLength + 8, cy + 24);
+                    ctx.lineTo(cx + 22 + stretchLength + 16 + i * 4, cy + 24 + (i - 1) * 4);
+                    ctx.stroke();
+                }
+                // Left arm normal
+                ctx.fillStyle = '#fdc689';
+                ctx.fillRect(cx + 6, cy + 22, 4, 10);
             } else {
-                ctx.fillRect(cx + 2, cy + 22, 8, 4);
+                // Stretched left arm
+                ctx.fillRect(cx - stretchLength + 6, cy + 23, stretchLength, 3);
+                // Fist at the end
+                ctx.fillStyle = '#fdc689';
+                ctx.fillRect(cx - stretchLength - 2, cy + 20, 8, 8);
+                // Impact lines
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(cx - stretchLength - 2, cy + 24);
+                    ctx.lineTo(cx - stretchLength - 16 - i * 4, cy + 24 + (i - 1) * 4);
+                    ctx.stroke();
+                }
+                // Right arm normal
+                ctx.fillStyle = '#fdc689';
+                ctx.fillRect(cx + 22, cy + 22, 4, 10);
             }
         } else {
+            // Normal arms
             ctx.fillRect(cx + 6, cy + 22, 4, 10);
             ctx.fillRect(cx + 22, cy + 22, 4, 10);
         }
